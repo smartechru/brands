@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if ! [ -x "$(command -v rsvg-convert)" ]; then
+  apt install -y librsvg2-bin
+fi
+
 # Copy folder, without symlinks, but use actual files instead
 mkdir -p build/_
 mkdir -p build/brands
@@ -21,36 +25,38 @@ find ./build -type f -name "icon.txt" | while read icon; do
   dir=$(dirname "${icon}")
   mdi=$(<${icon})
   mdi="${mdi##mdi:}"
-  mogrify \
-    -format png \
-    -density 6400 \
-    -background transparent \
-    -fill "rgb(0,171,248,1.0)" \
-    -opaque black \
-    -trim \
-    -resize 240x240 \
-    -gravity center \
-    -extent 256x256 \
-    -write "${dir}/icon.png" \
+  rsvg-convert \
+    --stylesheet scripts/mdi.css \
+    --keep-aspect-ratio \
+    --height 256 \
+    --width 256 \
+    --background-color transparent \
+    --output "${dir}/icon.png" \
     "mdi/svg/${mdi}.svg"
 
-  mogrify \
-    -format png \
-    -density 6400 \
-    -background transparent \
-    -fill "rgb(0,171,248,1.0)" \
-    -opaque black \
-    -trim \
-    -resize 480x480 \
-    -gravity center \
-    -extent 512x512 \
-    -write "${dir}/icon@2x.png" \
+  rsvg-convert \
+    --stylesheet scripts/mdi.css \
+    --keep-aspect-ratio \
+    --height 512 \
+    --width 512 \
+    --background-color transparent \
+    --output "${dir}/icon@2x.png" \
     "mdi/svg/${mdi}.svg"
 
   optipng -silent "${dir}/icon.png" "${dir}/icon@2x.png"
 
   rm "${icon}"
   echo "Generated mdi:${mdi} for ${icon}"
+done
+
+# Use icon@2x as logo@2x in case of a missing logo@2x and no dedicated logo is provided for better resolution
+# This check must before the missing logo check
+find ./build -type f -name "icon@2x.png" | while read icon; do
+  dir=$(dirname "${icon}")
+  if [[ ! -f "${dir}/logo2x.png" && ! -f "${dir}/logo.png" ]]; then
+    cp "${icon}" "${dir}/logo@2x.png"
+    echo "Using ${icon} as hDPI logo because no logo is provided"
+  fi
 done
 
 # Use icon as logo in case of a missing logo
@@ -60,6 +66,10 @@ find ./build -type f -name "icon.png" | while read icon; do
     cp "${icon}" "${dir}/logo.png"
     echo "Using ${icon} as logo"
   fi
+  if [[ ! -f "${dir}/dark_logo.png" ]] && [[ -f "${dir}/dark_icon.png" ]]; then
+    cp "${dir}/dark_icon.png" "${dir}/dark_logo.png"
+    echo "Using ${dir}/dark_icon.png as dark_logo"
+  fi
 done
 
 # Use icon as icon@2x in case it is missing
@@ -68,6 +78,10 @@ find ./build -type f -name "icon.png" | while read icon; do
   if [[ ! -f "${dir}/icon@2x.png" ]]; then
     cp "${icon}" "${dir}/icon@2x.png"
     echo "Using ${icon} as hDPI icon"
+  fi
+  if [[ ! -f "${dir}/dark_logo@2x.png" ]] && [[ -f "${dir}/dark_icon@2x.png" ]]; then
+    cp "${dir}/dark_icon@2x.png" "${dir}/dark_logo@2x.png"
+    echo "Using ${dir}/dark_icon@2x.png as dark_logo@2x"
   fi
 done
 
@@ -94,6 +108,10 @@ find ./build/brands -type f -name "icon.png" | while read icon; do
     cp "${icon}" "${dir}/logo.png"
     echo "Using ${icon} as logo"
   fi
+  if [[ ! -f "${dir}/dark_logo.png" ]] && [[ -f "${dir}/dark_icon.png" ]]; then
+    cp "${dir}/dark_icon.png" "${dir}/dark_logo.png"
+    echo "Using ${dir}/dark_icon.png as dark_logo"
+  fi
 done
 
 # Use brand icon as icon@2x in case it is missing
@@ -102,6 +120,10 @@ find ./build/brands -type f -name "icon.png" | while read icon; do
   if [[ ! -f "${dir}/icon@2x.png" ]]; then
     cp "${icon}" "${dir}/icon@2x.png"
     echo "Using ${icon} as hDPI icon"
+  fi
+  if [[ ! -f "${dir}/dark_logo@2x.png" ]] && [[ -f "${dir}/dark_icon@2x.png" ]]; then
+    cp "${dir}/dark_icon@2x.png" "${dir}/dark_logo@2x.png"
+    echo "Using ${dir}/dark_icon@2x.png as dark_logo@2x"
   fi
 done
 
